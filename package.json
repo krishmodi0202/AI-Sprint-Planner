@@ -9,10 +9,19 @@
     "client": "cd client && npm run dev",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install"
   },
-  "keywords": ["ai", "sprint", "planning", "prd", "trello"],
+  "keywords": [
+    "ai",
+    "sprint",
+    "planning",
+    "prd",
+    "trello"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@clerk/clerk-react": "^5.43.1"
   }
 }

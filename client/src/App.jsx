@@ -6,6 +6,7 @@ import AuthButton from './components/AuthButton';
 import ProtectedRoute from './components/ProtectedRoute';
 import AIAssistant from './components/AIAssistant';
 import GuidanceTooltip from './components/GuidanceTooltip';
+import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import { saveSprintPlan, getUserSprintPlans } from './lib/database';
 import { useAuth } from './hooks/useAuth';
 import { useGuidance } from './hooks/useGuidance';
@@ -19,6 +20,52 @@ function App() {
   const [error, setError] = useState('');
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedWeeks, setSelectedWeeks] = useState(4);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  // Debug state
+  console.log('App state - isSignedIn:', isSignedIn, 'showOnboarding:', showOnboarding, 'user:', user?.id);
+
+  // Check if user has completed onboarding
+  useEffect(() => {
+    const checkUserProfile = async () => {
+      if (isSignedIn && user) {
+        console.log('Checking user profile for:', user.id);
+        try {
+          // Check if user has existing profile in Supabase
+          const { getUserProfileByClerkId } = await import('./lib/profileService');
+          const result = await getUserProfileByClerkId(user.id);
+          
+          console.log('Profile check result:', result);
+          
+          if (result.success && result.profile) {
+            // User has profile, skip onboarding
+            console.log('User has existing profile, skipping onboarding');
+            localStorage.setItem('userProfileId', result.profile.id);
+            localStorage.setItem('onboardingCompleted', 'true');
+            setShowOnboarding(false);
+          } else {
+            // No profile found, show onboarding
+            console.log('No profile found, showing onboarding');
+            localStorage.removeItem('onboardingCompleted');
+            setShowOnboarding(true);
+          }
+        } catch (error) {
+          console.error('Error checking profile:', error);
+          // If there's an error checking Supabase, show onboarding for new users
+          const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+          console.log('Fallback - onboardingCompleted:', onboardingCompleted);
+          if (!onboardingCompleted) {
+            console.log('Showing onboarding as fallback');
+            setShowOnboarding(true);
+          }
+        }
+      } else {
+        console.log('User not signed in or user object not ready');
+      }
+    };
+
+    checkUserProfile();
+  }, [isSignedIn, user]);
 
   // Initialize guidance system
   const { currentStep, progressPercentage } = useGuidance({
@@ -127,6 +174,133 @@ Success Metrics:
 - Task completion rate improvement
 - Reduced project delivery time`;
 
+  const handleOnboardingComplete = (onboardingData) => {
+    setShowOnboarding(false);
+    console.log('Onboarding completed with data:', onboardingData);
+  };
+
+  // Show onboarding if user is signed in but hasn't completed onboarding
+  if (isSignedIn && showOnboarding) {
+    console.log('Rendering OnboardingFlow component');
+    return (
+      <div className="fixed inset-0 z-50 bg-white">
+        <OnboardingFlow onComplete={handleOnboardingComplete} />
+      </div>
+    );
+  }
+
+  // Show landing page for unauthenticated users
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        {/* Header */}
+        <motion.header 
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white/20"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <motion.div 
+                className="flex items-center space-x-3"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  AI Sprint Planner
+                </h1>
+              </motion.div>
+              <AuthButton />
+            </div>
+          </div>
+        </motion.header>
+
+        {/* Landing Page Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+                Transform Your 
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> PRDs </span>
+                into Sprint Plans
+              </h1>
+              <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                Convert Product Requirement Documents into structured, actionable sprint plans with AI-powered analysis. 
+                Streamline your development process and boost team productivity.
+              </p>
+              
+              <motion.div
+                className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                <AuthButton />
+                <p className="text-sm text-gray-500">
+                  Get started in seconds with Google or Facebook
+                </p>
+              </motion.div>
+            </motion.div>
+
+            {/* Features Grid */}
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              <div className="bg-white/60 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/20">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Smart PRD Analysis</h3>
+                <p className="text-gray-600">
+                  AI-powered analysis of your Product Requirements to extract key features and user stories
+                </p>
+              </div>
+
+              <div className="bg-white/60 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/20">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Flexible Sprint Planning</h3>
+                <p className="text-gray-600">
+                  Generate sprint plans for 1-12 weeks with automatically distributed tasks and milestones
+                </p>
+              </div>
+
+              <div className="bg-white/60 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/20">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Trello Integration</h3>
+                <p className="text-gray-600">
+                  Export your sprint plans directly to Trello boards with organized cards and lists
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Header */}
@@ -162,14 +336,13 @@ Success Metrics:
         </div>
       </motion.header>
 
-      <ProtectedRoute>
-        {/* Main Content */}
-        <motion.main 
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-        >
+      {/* Main Content for Authenticated Users */}
+      <motion.main 
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+      >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Input Section */}
             <motion.div 
@@ -445,8 +618,7 @@ Success Metrics:
               </AnimatePresence>
             </motion.div>
           </div>
-        </motion.main>
-      </ProtectedRoute>
+      </motion.main>
 
       {/* AI Assistant */}
       <AIAssistant
