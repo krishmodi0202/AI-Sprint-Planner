@@ -6,6 +6,7 @@ import AuthButton from './components/AuthButton';
 import ProtectedRoute from './components/ProtectedRoute';
 import AIAssistant from './components/AIAssistant';
 import GuidanceTooltip from './components/GuidanceTooltip';
+import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import { saveSprintPlan, getUserSprintPlans } from './lib/database';
 import { useAuth } from './hooks/useAuth';
 import { useGuidance } from './hooks/useGuidance';
@@ -19,6 +20,17 @@ function App() {
   const [error, setError] = useState('');
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedWeeks, setSelectedWeeks] = useState(4);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check if user has completed onboarding
+  useEffect(() => {
+    if (isSignedIn && user) {
+      const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+      if (!onboardingCompleted) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isSignedIn, user]);
 
   // Initialize guidance system
   const { currentStep, progressPercentage } = useGuidance({
@@ -126,6 +138,16 @@ Success Metrics:
 - User adoption rate > 80%
 - Task completion rate improvement
 - Reduced project delivery time`;
+
+  const handleOnboardingComplete = (onboardingData) => {
+    setShowOnboarding(false);
+    console.log('Onboarding completed with data:', onboardingData);
+  };
+
+  // Show onboarding if user is signed in but hasn't completed onboarding
+  if (isSignedIn && showOnboarding) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
