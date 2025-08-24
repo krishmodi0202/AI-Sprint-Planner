@@ -15,6 +15,7 @@ function App() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
   const [savedPlans, setSavedPlans] = useState([]);
+  const [selectedWeeks, setSelectedWeeks] = useState(4);
 
   // Load saved plans when user is authenticated
   const loadSavedPlans = async () => {
@@ -45,7 +46,8 @@ function App() {
     
     try {
       const response = await axios.post('/api/plan', {
-        prdText: prdText
+        prdText: prdText,
+        weeks: selectedWeeks
       });
       setSprintPlan(response.data);
       
@@ -173,18 +175,46 @@ Success Metrics:
                   value={prdText}
                   onChange={(e) => setPrdText(e.target.value)}
                   placeholder="Paste your PRD text here..."
-                  className="w-full h-96 p-4 border border-gray-200 rounded-xl bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="w-full h-80 p-4 border border-gray-200 rounded-xl bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none shadow-lg hover:shadow-xl transition-all duration-300"
                   whileFocus={{ scale: 1.02 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
-                <motion.button
-                  onClick={() => setPrdText(samplePRD)}
-                  className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <div className="flex items-center justify-between mt-2">
+                  <motion.button
+                    onClick={() => setPrdText(samplePRD)}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    ✨ Use sample PRD
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Week Selection */}
+              <div>
+                <label htmlFor="weeks-select" className="block text-sm font-medium text-gray-700 mb-2">
+                  Sprint Duration
+                </label>
+                <motion.select
+                  id="weeks-select"
+                  value={selectedWeeks}
+                  onChange={(e) => setSelectedWeeks(parseInt(e.target.value))}
+                  className="w-full p-3 border border-gray-200 rounded-xl bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg hover:shadow-xl transition-all duration-300"
+                  whileHover={{ scale: 1.01 }}
+                  whileFocus={{ scale: 1.02 }}
                 >
-                  ✨ Use sample PRD
-                </motion.button>
+                  <option value={1}>1 Week Sprint</option>
+                  <option value={2}>2 Weeks Sprint</option>
+                  <option value={3}>3 Weeks Sprint</option>
+                  <option value={4}>4 Weeks Sprint (Recommended)</option>
+                  <option value={6}>6 Weeks Sprint</option>
+                  <option value={8}>8 Weeks Sprint</option>
+                  <option value={12}>12 Weeks Sprint</option>
+                </motion.select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Tasks will be distributed across {selectedWeeks} week{selectedWeeks !== 1 ? 's' : ''}
+                </p>
               </div>
 
               <div className="flex space-x-4">
@@ -319,7 +349,9 @@ Success Metrics:
 
                       {/* Timeline */}
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-3">Timeline</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-3">
+                          Timeline ({selectedWeeks} Week{selectedWeeks !== 1 ? 's' : ''})
+                        </h3>
                         <div className="space-y-3">
                           {sprintPlan.timeline.map((milestone, index) => (
                             <motion.div 
@@ -329,7 +361,14 @@ Success Metrics:
                               transition={{ delay: index * 0.1 }}
                               className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100 hover:shadow-lg transition-shadow duration-300"
                             >
-                              <h4 className="font-medium text-green-900">{milestone.milestone}</h4>
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-medium text-green-900">{milestone.milestone}</h4>
+                                {milestone.week && (
+                                  <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full font-medium">
+                                    Week {milestone.week}
+                                  </span>
+                                )}
+                              </div>
                               <ul className="text-sm text-green-700 mt-2 space-y-1">
                                 {milestone.tasks.map((task, taskIndex) => (
                                   <motion.li 
