@@ -4,8 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@clerk/clerk-react';
 import AuthButton from './components/AuthButton';
 import ProtectedRoute from './components/ProtectedRoute';
+import AIAssistant from './components/AIAssistant';
+import GuidanceTooltip from './components/GuidanceTooltip';
 import { saveSprintPlan, getUserSprintPlans } from './lib/database';
 import { useAuth } from './hooks/useAuth';
+import { useGuidance } from './hooks/useGuidance';
 
 function App() {
   const { isSignedIn, user, dbUser } = useAuth();
@@ -16,6 +19,15 @@ function App() {
   const [error, setError] = useState('');
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedWeeks, setSelectedWeeks] = useState(4);
+
+  // Initialize guidance system
+  const { currentStep, progressPercentage } = useGuidance({
+    isSignedIn,
+    prdText,
+    selectedWeeks,
+    sprintPlan,
+    loading
+  });
 
   // Load saved plans when user is authenticated
   const loadSavedPlans = async () => {
@@ -166,56 +178,73 @@ Success Metrics:
               transition={{ duration: 0.6, delay: 0.4 }}
               className="space-y-6"
             >
-              <div>
-                <label htmlFor="prd-input" className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Requirement Document
-                </label>
-                <motion.textarea
-                  id="prd-input"
-                  value={prdText}
-                  onChange={(e) => setPrdText(e.target.value)}
-                  placeholder="Paste your PRD text here..."
-                  className="w-full h-80 p-4 border border-gray-200 rounded-xl bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none shadow-lg hover:shadow-xl transition-all duration-300"
-                  whileFocus={{ scale: 1.02 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <motion.button
-                    onClick={() => setPrdText(samplePRD)}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    ✨ Use sample PRD
-                  </motion.button>
+              <GuidanceTooltip 
+                message="Start by entering your Product Requirement Document here. This will be analyzed to create your sprint plan."
+                show={!prdText.trim()}
+                position="bottom"
+              >
+                <div>
+                  <label htmlFor="prd-input" className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Requirement Document
+                  </label>
+                  <motion.textarea
+                    id="prd-input"
+                    value={prdText}
+                    onChange={(e) => setPrdText(e.target.value)}
+                    placeholder="Paste your PRD text here..."
+                    className="w-full h-80 p-4 border border-gray-200 rounded-xl bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none shadow-lg hover:shadow-xl transition-all duration-300"
+                    whileFocus={{ scale: 1.02 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <GuidanceTooltip 
+                      message="Try our sample PRD to see how the sprint planner works!"
+                      show={!prdText.trim()}
+                    >
+                      <motion.button
+                        onClick={() => setPrdText(samplePRD)}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        ✨ Use sample PRD
+                      </motion.button>
+                    </GuidanceTooltip>
+                  </div>
                 </div>
-              </div>
+              </GuidanceTooltip>
 
               {/* Week Selection */}
-              <div>
-                <label htmlFor="weeks-select" className="block text-sm font-medium text-gray-700 mb-2">
-                  Sprint Duration
-                </label>
-                <motion.select
-                  id="weeks-select"
-                  value={selectedWeeks}
-                  onChange={(e) => setSelectedWeeks(parseInt(e.target.value))}
-                  className="w-full p-3 border border-gray-200 rounded-xl bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg hover:shadow-xl transition-all duration-300"
-                  whileHover={{ scale: 1.01 }}
-                  whileFocus={{ scale: 1.02 }}
-                >
-                  <option value={1}>1 Week Sprint</option>
-                  <option value={2}>2 Weeks Sprint</option>
-                  <option value={3}>3 Weeks Sprint</option>
-                  <option value={4}>4 Weeks Sprint (Recommended)</option>
-                  <option value={6}>6 Weeks Sprint</option>
-                  <option value={8}>8 Weeks Sprint</option>
-                  <option value={12}>12 Weeks Sprint</option>
-                </motion.select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Tasks will be distributed across {selectedWeeks} week{selectedWeeks !== 1 ? 's' : ''}
-                </p>
-              </div>
+              <GuidanceTooltip 
+                message="Choose your sprint duration. Tasks will be automatically distributed across the selected weeks."
+                show={prdText.trim() && !sprintPlan}
+                position="right"
+              >
+                <div>
+                  <label htmlFor="weeks-select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Sprint Duration
+                  </label>
+                  <motion.select
+                    id="weeks-select"
+                    value={selectedWeeks}
+                    onChange={(e) => setSelectedWeeks(parseInt(e.target.value))}
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg hover:shadow-xl transition-all duration-300"
+                    whileHover={{ scale: 1.01 }}
+                    whileFocus={{ scale: 1.02 }}
+                  >
+                    <option value={1}>1 Week Sprint</option>
+                    <option value={2}>2 Weeks Sprint</option>
+                    <option value={3}>3 Weeks Sprint</option>
+                    <option value={4}>4 Weeks Sprint (Recommended)</option>
+                    <option value={6}>6 Weeks Sprint</option>
+                    <option value={8}>8 Weeks Sprint</option>
+                    <option value={12}>12 Weeks Sprint</option>
+                  </motion.select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tasks will be distributed across {selectedWeeks} week{selectedWeeks !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </GuidanceTooltip>
 
               <div className="flex space-x-4">
                 <motion.button
@@ -418,6 +447,15 @@ Success Metrics:
           </div>
         </motion.main>
       </ProtectedRoute>
+
+      {/* AI Assistant */}
+      <AIAssistant
+        currentStep={currentStep}
+        prdText={prdText}
+        selectedWeeks={selectedWeeks}
+        sprintPlan={sprintPlan}
+        isSignedIn={isSignedIn}
+      />
     </div>
   );
 }
