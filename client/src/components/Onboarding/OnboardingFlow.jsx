@@ -105,8 +105,8 @@ const OnboardingFlow = ({ onComplete }) => {
   const CurrentStepComponent = steps[currentStep - 1].component;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4 relative z-50">
-      <div className="w-full max-w-2xl relative z-10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-start justify-center p-4 py-8 relative z-50 overflow-y-auto">
+      <div className="w-full max-w-2xl relative z-10 mb-8">
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">

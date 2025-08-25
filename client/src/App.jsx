@@ -10,6 +10,7 @@ import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import { saveSprintPlan, getUserSprintPlans } from './lib/database';
 import { useAuth } from './hooks/useAuth';
 import { useGuidance } from './hooks/useGuidance';
+import sprintService from './services/sprintService';
 
 function App() {
   const { isSignedIn, user, dbUser } = useAuth();
@@ -21,6 +22,7 @@ function App() {
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedWeeks, setSelectedWeeks] = useState(4);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   
   // Debug state
   console.log('App state - isSignedIn:', isSignedIn, 'showOnboarding:', showOnboarding, 'user:', user?.id);
@@ -42,6 +44,7 @@ function App() {
             console.log('User has existing profile, skipping onboarding');
             localStorage.setItem('userProfileId', result.profile.id);
             localStorage.setItem('onboardingCompleted', 'true');
+            setUserProfile(result.profile);
             setShowOnboarding(false);
           } else {
             // No profile found, show onboarding
@@ -104,20 +107,23 @@ function App() {
     setError('');
     
     try {
-      const response = await axios.post('/api/plan', {
-        prdText: prdText,
-        weeks: selectedWeeks
-      });
-      setSprintPlan(response.data);
+      // Use the new Gemini-powered sprint service with user profile data
+      const result = await sprintService.generateSprintPlan(prdText, selectedWeeks, userProfile);
       
-      // Save to database if user is authenticated
-      if (user && response.data) {
-        try {
-          await saveSprintPlan(user.id, prdText, response.data);
-          loadSavedPlans(); // Refresh saved plans
-        } catch (dbError) {
-          console.error('Error saving to database:', dbError);
+      if (result.success) {
+        setSprintPlan(result.data);
+        
+        // Save to database if user is authenticated
+        if (user && result.data) {
+          try {
+            await saveSprintPlan(user.id, prdText, result.data);
+            loadSavedPlans(); // Refresh saved plans
+          } catch (dbError) {
+            console.error('Error saving to database:', dbError);
+          }
         }
+      } else {
+        setError(result.error || 'Failed to generate sprint plan. Please try again.');
       }
     } catch (err) {
       setError('Failed to generate sprint plan. Please try again.');
@@ -137,10 +143,12 @@ function App() {
     setError('');
 
     try {
-      await axios.post('/api/export', {
-        data: sprintPlan
-      });
-      alert('Sprint plan exported to Trello successfully! Check the server console for details.');
+      const result = await sprintService.exportToTrello(sprintPlan);
+      if (result.success) {
+        alert(result.message || 'Sprint plan exported to Trello successfully!');
+      } else {
+        setError(result.error || 'Failed to export to Trello. Please try again.');
+      }
     } catch (err) {
       setError('Failed to export to Trello. Please try again.');
       console.error('Error:', err);

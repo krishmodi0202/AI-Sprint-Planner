@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const geminiService = require('./services/geminiService');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -119,19 +120,45 @@ function generateTimelineForWeeks(weeks) {
 }
 
 // Routes
-app.post('/api/plan', (req, res) => {
+app.post('/api/plan', async (req, res) => {
   try {
-    const { prdText, weeks } = req.body;
+    const { prdText, weeks, userProfile } = req.body;
     
     if (!prdText) {
       return res.status(400).json({ error: 'PRD text is required' });
     }
 
-    const sprintPlan = generateSprintPlan(prdText, weeks);
+    // Try to use Gemini AI first, fallback to mock if API key not available
+    let sprintPlan;
+    try {
+      sprintPlan = await geminiService.generateSprintPlan(prdText, weeks, userProfile);
+      console.log('✅ Generated sprint plan using Gemini AI');
+    } catch (geminiError) {
+      console.warn('⚠️ Gemini AI failed, using fallback:', geminiError.message);
+      sprintPlan = generateSprintPlan(prdText, weeks);
+    }
+
     res.json(sprintPlan);
   } catch (error) {
     console.error('Error generating sprint plan:', error);
     res.status(500).json({ error: 'Failed to generate sprint plan' });
+  }
+});
+
+// New endpoint for generating detailed weekly tasks
+app.post('/api/weekly-tasks', async (req, res) => {
+  try {
+    const { epicTitle, userStories, weekNumber, totalWeeks } = req.body;
+    
+    if (!epicTitle || !userStories || !weekNumber) {
+      return res.status(400).json({ error: 'Epic title, user stories, and week number are required' });
+    }
+
+    const weeklyTasks = await geminiService.generateWeeklyTasks(epicTitle, userStories, weekNumber, totalWeeks);
+    res.json(weeklyTasks);
+  } catch (error) {
+    console.error('Error generating weekly tasks:', error);
+    res.status(500).json({ error: 'Failed to generate weekly tasks' });
   }
 });
 
